@@ -1,0 +1,49 @@
+x-common-keys-core: &common-keys-core
+  restart: unless-stopped
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "200k"
+      max-file: "10"
+
+services:
+  owntrack-traefik:
+    <<: *common-keys-core
+    image: traefik:v2.9
+    container_name: owntrack-traefik
+    command:
+      - --api.insecure=false
+      - --accesslog=true
+      - --providers.file.filename=/config/config.yml
+      - --entrypoints.web.address=:8080
+      - --entrypoints.web.http.redirections.entryPoint.to=web-secure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=false
+      - --entrypoints.web-secure.address=:8443
+      - --entrypoints.web-secure.transport.respondingTimeouts.readTimeout=600s
+      - --entrypoints.web-secure.transport.respondingTimeouts.idleTimeout=600s
+      - --entrypoints.web-secure.transport.respondingTimeouts.writeTimeout=600s
+    networks:
+      - owntrack_net
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik:/config
+
+  owntrack-trmnl:
+    <<: *common-keys-core
+    container_name: owntrack-trmnl
+    build:
+      context: ./trmnl/
+    networks:
+      - owntrack_net
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:?No AWS Default Region defined}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?No AWS Access Key ID defined}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?No AWS Secret Access Key defined}
+
+networks:
+  owntrack_net:
+    driver: bridge

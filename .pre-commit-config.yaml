@@ -1,0 +1,34 @@
+repos:
+  - repo: local
+    hooks:
+    - id: trufflehog
+      name: TruffleHog
+      description: Detect secrets in your data.
+      entry: bash -c 'docker run --pull=always --rm -v "$(pwd):/workdir" -i --rm trufflesecurity/trufflehog:latest git file:///workdir --since-commit HEAD --only-verified --fail --trust-local-git-config'
+      language: system
+      stages: ["commit", "push"]
+
+  # Generic pre-commit hooks for all files
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+    - id: end-of-file-fixer
+      exclude: "assets/css/custom.css"
+    - id: mixed-line-ending
+    - id: trailing-whitespace
+      args: ["--markdown-linebreak-ext=markdown,md"]
+    - id: check-json
+    - id: check-yaml
+
+  # Format Python files
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 25.12.0
+    hooks:
+    - id: black
+
+  # Check for best practice in Python files
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+    - id: flake8
+      args: ["--ignore", "E501"]
