@@ -274,6 +274,7 @@ def generate_image(final_locations: dict):
             "/tmp/dashboard.png",
             "trmnl-images-179627667852-eu-west-2-an",
             "dashboard.png",
+            ExtraArgs={'ContentType': 'image/png'},
         )
     except ClientError as e:
         logging.error(e)
@@ -284,6 +285,7 @@ def generate_image(final_locations: dict):
             "/tmp/dashboard.html",
             "trmnl-images-179627667852-eu-west-2-an",
             "dashboard.html",
+            ExtraArgs={'ContentType': 'image/png'},
         )
     except ClientError as e:
         logging.error(e)
