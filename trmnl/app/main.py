@@ -192,6 +192,10 @@ async def push_location(
 
 @app.get("/owntrack/locations", status_code=200)
 async def get_locations():
+    return calculate_locations()
+
+
+def calculate_locations():
     final_locations = []
 
     for username in usernames:
@@ -243,7 +247,7 @@ async def get_locations():
 
 
 def update_remote_data():
-    final_locations = get_locations()
+    final_locations = calculate_locations()
     generate_image(final_locations)
     generate_json(final_locations)
 
