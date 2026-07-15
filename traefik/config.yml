@@ -1,19 +1,8 @@
-tls:
-  certificates:
-    - certFile: "/config/TS_HOST.TS_DOMAIN.ts.net.crt"
-      keyFile: "/config/TS_HOST.TS_DOMAIN.ts.net.key"
-  options:
-    default:
-      sniStrict: true
 http:
-  serversTransports:
-    ignorecert:
-      insecureSkipVerify: true
   routers:
     owntrack:
       rule: PathPrefix(`/owntrack`)
       service: owntrack
-      tls: true
       middlewares:
         - owntrack-headers
         - owntrack-auth
@@ -27,7 +16,6 @@ http:
       headers:
         customRequestHeaders:
           X-Forwarded-Proto: https
-          X-Forwarded-Host: TS_HOST.TS_DOMAIN.ts.net
     owntrack-auth:
       basicAuth:
         headerField: X-AuthenticatedUser

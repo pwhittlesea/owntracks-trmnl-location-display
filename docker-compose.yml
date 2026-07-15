@@ -6,30 +6,54 @@ x-common-keys-core: &common-keys-core
       max-size: "200k"
       max-file: "10"
 
+configs:
+  ts-serve:
+    content: |
+      {"TCP":{"443":{"HTTPS":true}},
+      "Web":{"$${TS_CERT_DOMAIN}:443":
+          {"Handlers":{"/":
+          {"Proxy":"http://127.0.0.1:80"}}}},
+      "AllowFunnel":{"$${TS_CERT_DOMAIN}:443":false}}
+
 services:
+  owntrack-tailscale:
+    <<: *common-keys-core
+    image: tailscale/tailscale:latest
+    container_name: owntrack-tailscale
+    hostname: owntrack
+    networks:
+      - owntrack_net
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: false
+      TS_ENABLE_HEALTH_CHECK: true
+      TS_LOCAL_ADDR_PORT: 127.0.0.1:41234
+      TS_ACCEPT_DNS: true
+      TS_AUTH_ONCE: true
+    configs:
+      - source: ts-serve
+        target: /config/serve.json
+    volumes:
+      - ./tailscale/state:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+    restart: always
+
   owntrack-traefik:
     <<: *common-keys-core
     image: traefik:v2.9
     container_name: owntrack-traefik
     command:
-      - --api.insecure=false
       - --accesslog=true
       - --providers.file.filename=/config/config.yml
-      - --entrypoints.web.address=:8080
-      - --entrypoints.web.http.redirections.entryPoint.to=web-secure
-      - --entrypoints.web.http.redirections.entryPoint.scheme=https
-      - --entrypoints.web.http.redirections.entrypoint.permanent=false
-      - --entrypoints.web-secure.address=:8443
-      - --entrypoints.web-secure.transport.respondingTimeouts.readTimeout=600s
-      - --entrypoints.web-secure.transport.respondingTimeouts.idleTimeout=600s
-      - --entrypoints.web-secure.transport.respondingTimeouts.writeTimeout=600s
-    networks:
-      - owntrack_net
-    ports:
-      - "8080:8080"
-      - "8443:8443"
+      - --entrypoints.web.address=:80
+      - --entrypoints.web-secure.address=:443
+    network_mode: service:owntrack-tailscale
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik:/config
 
   owntrack-trmnl:
