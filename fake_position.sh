@@ -14,3 +14,5 @@ curl ${URL} \
     -d "{\"tid\": \"fake\", \"batt\": 69, \"lon\": $LON, \"acc\": 7, \"bs\": 1, \"p\": 101.332, \"vac\": 30, \"lat\": $LAT, \"t\": \"u\", \"conn\": \"w\", \"tst\": $TIME, \"m\": 0, \"alt\": 57, \"_type\": \"location\"}" \
     -X POST
 echo
+curl ${URL} | jq .
+echo

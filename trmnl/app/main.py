@@ -156,6 +156,12 @@ class Location(BaseModel):
 app = FastAPI(docs_url=None, redoc_url=None)
 dynamo = boto3.resource("dynamodb").Table("emf-trmnl-locations")
 s3 = boto3.client("s3")
+hti = Html2Image(
+    size=(800, 480),
+    output_path="/tmp",
+    custom_flags=["--no-sandbox"],
+    disable_logging=True,
+)
 
 
 @app.post("/owntrack/locations", status_code=200)
@@ -243,12 +249,6 @@ def update_remote_data():
 
 
 def generate_image(final_locations: dict):
-    hti = Html2Image(
-        size=(800, 480),
-        output_path="/tmp",
-        custom_flags=["--no-sandbox"],
-        disable_logging=True,
-    )
     with open("/code/app/display.html", "r") as file:
         html = file.read()
         tableContent = ""
@@ -262,6 +262,8 @@ def generate_image(final_locations: dict):
             tableContent += "</tr>"
         html = html.replace("TABLE_CONTENT", tableContent)
         hti.screenshot(html_str=html, save_as="dashboard.png")
+        with open("/tmp/dashboard.html", "w") as f:
+            f.write(html)
 
     try:
         s3.upload_file(
@@ -271,8 +273,17 @@ def generate_image(final_locations: dict):
         )
     except ClientError as e:
         logging.error(e)
-
     print("Updated dashboard.png")
+
+    try:
+        s3.upload_file(
+            "/tmp/dashboard.html",
+            "trmnl-images-179627667852-eu-west-2-an",
+            "dashboard.html",
+        )
+    except ClientError as e:
+        logging.error(e)
+    print("Updated dashboard.html")
 
 
 def generate_json(final_locations: dict):
