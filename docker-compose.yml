@@ -63,6 +63,8 @@ services:
       context: ./trmnl/
     networks:
       - owntrack_net
+    volumes:
+      - ./sqllite:/sqllite
     environment:
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:?No AWS Default Region defined}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?No AWS Access Key ID defined}

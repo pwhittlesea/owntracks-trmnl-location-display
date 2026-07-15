@@ -3,7 +3,6 @@ from fastapi import BackgroundTasks, FastAPI, Header
 from pydantic import BaseModel
 from decimal import Decimal
 from html2image import Html2Image
-from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from math import sin, sqrt, asin, cos, radians
 
@@ -11,10 +10,8 @@ import json
 import boto3
 import logging
 import datetime
+import sqlite3
 
-
-# TODO remove hard coded list of people
-usernames = ["phill", "sam_w"]
 # Locations
 locations = [
     {"venue": "Arcade Workshop", "lat": 52.042864, "lon": -2.376695},
@@ -154,13 +151,28 @@ class Location(BaseModel):
 
 
 app = FastAPI(docs_url=None, redoc_url=None)
-dynamo = boto3.resource("dynamodb").Table("emf-trmnl-locations")
 s3 = boto3.client("s3")
 hti = Html2Image(
     size=(800, 480),
     output_path="/tmp",
     custom_flags=["--no-sandbox"],
     disable_logging=True,
+)
+conn = sqlite3.connect("/sqllite/locations.db")
+cursor = conn.cursor()
+cursor.execute(
+    """
+    CREATE TABLE IF NOT EXISTS locations (
+        username VARCHAR(255) NOT NULL,
+        tst INT NOT NULL,
+        accuracy INT,
+        battery_level INT,
+        battery_status VARCHAR(10),
+        latitude REAL,
+        longitude REAL,
+        tracker_id VARCHAR(255)
+    );
+"""
 )
 
 
@@ -170,18 +182,16 @@ async def push_location(
     background_tasks: BackgroundTasks,
     x_authenticateduser: Annotated[str | None, Header()] = None,
 ):
-    dynamo.put_item(
-        Item={
-            "username": x_authenticateduser,
-            "tst": location.tst,
-            "latitude": float_to_decimal(location.lat),
-            "longitude": float_to_decimal(location.lon),
-            "accuracy": location.acc,
-            "battery_level": location.batt,
-            "battery_status": ["unknown", "unplugged", "charging", "full"][location.bs],
-            "tracker_id": location.tid,
-        }
+    batt_status = ["unknown", "unplugged", "charging", "full"][location.bs]
+    cursor.execute(
+        f"""
+        INSERT INTO locations
+            (username, tst, accuracy, battery_level, battery_status, latitude, longitude, tracker_id)
+        VALUES
+            ('{x_authenticateduser}', {location.tst}, {location.acc}, {location.batt}, '{batt_status}', {location.lat}, {location.lon}, '{location.tid}');
+    """
     )
+    conn.commit()
 
     print(
         f"{location.tst}: Got location from user {location.tid}/{x_authenticateduser}: {location.lat}, {location.lon} (accuracy {location.acc}m) and battery status: {location.batt}% ({location.bs})"
@@ -198,50 +208,52 @@ async def get_locations():
 def calculate_locations():
     final_locations = []
 
+    usernames = []
+    cursor.execute("SELECT DISTINCT username FROM locations")
+    for row in cursor.fetchall():
+        usernames.append(row[0])
+
     for username in usernames:
-        response = dynamo.query(
-            KeyConditionExpression=Key("username").eq(username),
-            ScanIndexForward=False,  # descending order
-            Limit=1,
+        cursor.execute(
+            f"SELECT latitude, longitude FROM locations WHERE username = '{username}' ORDER BY tst DESC LIMIT 1"
         )
-        latest_position = response["Items"][0] if response["Items"] else None
-        if latest_position is not None:
-            person_lat = latest_position["latitude"]
-            person_lon = latest_position["longitude"]
+        for row in cursor.fetchall():
+            person_lat = row[0]
+            person_lon = row[1]
 
-            distances = []
-            for location in locations:
-                location_lat = location["lat"]
-                location_lon = location["lon"]
-                distance = calculate_distance(
-                    person_lat, person_lon, location_lat, location_lon
-                )
-                distances.append({"venue": location["venue"], "distance": distance})
-
-            # Sort by distance, nearest first
-            distances.sort(key=lambda x: x["distance"], reverse=False)
-
-            # Assume 50 meter circles around venues
-            closest_venue = distances[0]["venue"]
-            distance_m = round(distances[0]["distance"] * 1000, 2)
-
-            if distance_m > 50:
-                message = "The Outer Wilds"
-            else:
-                message = closest_venue
-
-            final_locations.append(
-                {
-                    "username": username,
-                    "message": message,
-                    "lat": decimal_to_float(person_lat),
-                    "lon": decimal_to_float(person_lon),
-                    "nearest": {
-                        "name": closest_venue,
-                        "distance": distance_m,
-                    },
-                }
+        distances = []
+        for location in locations:
+            location_lat = location["lat"]
+            location_lon = location["lon"]
+            distance = calculate_distance(
+                person_lat, person_lon, location_lat, location_lon
             )
+            distances.append({"venue": location["venue"], "distance": distance})
+
+        # Sort by distance, nearest first
+        distances.sort(key=lambda x: x["distance"], reverse=False)
+
+        # Assume 50 meter circles around venues
+        closest_venue = distances[0]["venue"]
+        distance_m = round(distances[0]["distance"] * 1000, 2)
+
+        if distance_m > 50:
+            message = "The Outer Wilds"
+        else:
+            message = closest_venue
+
+        final_locations.append(
+            {
+                "username": username,
+                "message": message,
+                "lat": decimal_to_float(person_lat),
+                "lon": decimal_to_float(person_lon),
+                "nearest": {
+                    "name": closest_venue,
+                    "distance": distance_m,
+                },
+            }
+        )
 
     return final_locations
 
