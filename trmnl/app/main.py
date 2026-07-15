@@ -180,7 +180,7 @@ async def push_location(
     print(
         f"{location.tst}: Got location from user {location.tid}/{x_authenticateduser}: {location.lat}, {location.lon} (accuracy {location.acc}m) and battery status: {location.batt}% ({location.bs})"
     )
-    background_tasks.add_task(get_locations)
+    background_tasks.add_task(update_remote_data)
     return []
 
 
@@ -233,10 +233,13 @@ async def get_locations():
                 }
             )
 
+    return final_locations
+
+
+def update_remote_data():
+    final_locations = get_locations()
     generate_image(final_locations)
     generate_json(final_locations)
-
-    return []
 
 
 def generate_image(final_locations: dict):
