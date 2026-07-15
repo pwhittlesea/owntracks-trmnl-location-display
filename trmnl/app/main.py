@@ -158,7 +158,7 @@ hti = Html2Image(
     custom_flags=["--no-sandbox"],
     disable_logging=True,
 )
-conn = sqlite3.connect("/sqllite/locations.db")
+conn = sqlite3.connect("/sqllite/locations.db", check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute(
     """
