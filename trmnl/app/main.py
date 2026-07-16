@@ -11,6 +11,7 @@ import boto3
 import logging
 import datetime
 import sqlite3
+import time
 
 # Locations
 locations = [
@@ -215,11 +216,16 @@ def calculate_locations():
 
     for username in usernames:
         cursor.execute(
-            f"SELECT latitude, longitude FROM locations WHERE username = '{username}' ORDER BY tst DESC LIMIT 1"
+            f"SELECT latitude, longitude, tst FROM locations WHERE username = '{username}' ORDER BY tst DESC LIMIT 1"
         )
         for row in cursor.fetchall():
             person_lat = row[0]
             person_lon = row[1]
+            reported = row[2]
+
+        # calculate the time since report
+        unix_timestamp = int(time.time())
+        time_since = unix_timestamp - reported
 
         distances = []
         for location in locations:
@@ -245,6 +251,7 @@ def calculate_locations():
         final_locations.append(
             {
                 "username": username,
+                "ago": time_since,
                 "message": message,
                 "lat": decimal_to_float(person_lat),
                 "lon": decimal_to_float(person_lon),
@@ -270,7 +277,7 @@ def generate_image(final_locations: dict):
         tableContent = ""
         for data in final_locations:
             tableContent += "<tr>"
-            tableContent += f"<td><span class=\"title\">{data['username']}</span></td>"
+            tableContent += f"<td><span class=\"title\">{data['username']} ({data['ago']}s ago)</span></td>"
             if data["message"] != data["nearest"]["name"]:
                 tableContent += f"<td><span class=\"title\">Near-ish {data['nearest']['name']} ({data['nearest']['distance']}m)</span></td>"
             else:
