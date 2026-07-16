@@ -198,7 +198,38 @@ async def push_location(
         f"{location.tst}: Got location from user {location.tid}/{x_authenticateduser}: {location.lat}, {location.lon} (accuracy {location.acc}m) and battery status: {location.batt}% ({location.bs})"
     )
     background_tasks.add_task(update_remote_data)
-    return []
+
+    other_locations = []
+
+    cursor.execute("SELECT DISTINCT username FROM locations")
+    for username in cursor.fetchall():
+        cursor.execute(
+            f"""
+            SELECT
+                tst, accuracy, battery_level, battery_status, latitude, longitude, tracker_id
+            FROM
+                locations
+            WHERE
+                username = '{username[0]}'
+            ORDER BY tst DESC
+            LIMIT 1
+            """
+        )
+
+        for row in cursor.fetchall():
+            other_locations.append(
+                {
+                    "_type": "location",
+                    "tst": row[0],
+                    "acc": row[1],
+                    "batt": row[2],
+                    "bs": ["unknown", "unplugged", "charging", "full"].index(row[3]),
+                    "lat": row[4],
+                    "lon": row[5],
+                    "tid": row[6],
+                }
+            )
+    return other_locations
 
 
 @app.get("/owntrack/locations", status_code=200)
