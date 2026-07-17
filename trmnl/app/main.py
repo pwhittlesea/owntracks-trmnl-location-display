@@ -324,6 +324,9 @@ def generate_image(final_locations: dict):
                 tableContent += f"<td><span class=\"title\">{data['nearest']['name']} ({data['nearest']['distance']}m)</span></td>"
             tableContent += "</tr>"
         html = html.replace("TABLE_CONTENT", tableContent)
+        html = html.replace(
+            "UPDATE_TIME", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
         hti.screenshot(html_str=html, save_as="dashboard.png")
         with open("/tmp/dashboard.html", "w") as f:
             f.write(html)
