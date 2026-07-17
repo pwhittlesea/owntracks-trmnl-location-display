@@ -130,7 +130,7 @@ locations = [
     {"venue": "Greenhouse", "lat": 52.041836, "lon": -2.378432},
     {"venue": "Volunteer Kitchen", "lat": 52.042218, "lon": -2.376869},
     {"venue": "Badge", "lat": 52.042146, "lon": -2.375106},
-    {"venue": "Manchampton", "lat": 52.040623, "lon": -2.375605},
+    {"venue": "Manchampton", "lat": 52.041167088612355, "lon": -2.3755874089251847},
 ]
 
 
