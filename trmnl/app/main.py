@@ -188,6 +188,12 @@ async def push_location(
     location: Location,
     x_authenticateduser: Annotated[str | None, Header()] = None,
 ):
+    print(
+        f"{location.tst}: Got location from user {location.tid}/{x_authenticateduser}: {location.lat}, {location.lon} (accuracy {location.acc}m) and battery status: {location.batt}% ({location.bs})"
+    )
+    if location.tst is None or location.lat is None or location.lon is None:
+        return []
+
     if location.bs is not None:
         batt_status = ["unknown", "unplugged", "charging", "full"][location.bs]
     else:
@@ -201,10 +207,6 @@ async def push_location(
     """
     )
     conn.commit()
-
-    print(
-        f"{location.tst}: Got location from user {location.tid}/{x_authenticateduser}: {location.lat}, {location.lon} (accuracy {location.acc}m) and battery status: {location.batt}% ({location.bs})"
-    )
 
     other_locations = []
 
