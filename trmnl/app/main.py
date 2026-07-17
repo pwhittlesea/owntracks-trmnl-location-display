@@ -1,10 +1,11 @@
 from typing import Annotated
-from fastapi import BackgroundTasks, FastAPI, Header
+from fastapi import FastAPI, Header
 from pydantic import BaseModel
 from decimal import Decimal
 from html2image import Html2Image
 from botocore.exceptions import ClientError
 from math import sin, sqrt, asin, cos, radians
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import json
 import boto3
@@ -177,13 +178,20 @@ cursor.execute(
 )
 
 
+@app.on_event("shutdown")
+def shutdown_event():
+    scheduler.shutdown()
+
+
 @app.post("/owntrack/locations", status_code=200)
 async def push_location(
     location: Location,
-    background_tasks: BackgroundTasks,
     x_authenticateduser: Annotated[str | None, Header()] = None,
 ):
-    batt_status = ["unknown", "unplugged", "charging", "full"][location.bs]
+    if location.bs is not None:
+        batt_status = ["unknown", "unplugged", "charging", "full"][location.bs]
+    else:
+        batt_status = "unknown"
     cursor.execute(
         f"""
         INSERT INTO locations
@@ -197,7 +205,6 @@ async def push_location(
     print(
         f"{location.tst}: Got location from user {location.tid}/{x_authenticateduser}: {location.lat}, {location.lon} (accuracy {location.acc}m) and battery status: {location.batt}% ({location.bs})"
     )
-    background_tasks.add_task(update_remote_data)
 
     other_locations = []
 
@@ -396,3 +403,10 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     # Radius of earth in kilometers is 6371
     km = 6371 * c
     return km
+
+
+scheduler = BackgroundScheduler()
+scheduler.start()
+scheduler.add_job(
+    update_remote_data, "interval", seconds=120, id="update_remote_data_job"
+)
