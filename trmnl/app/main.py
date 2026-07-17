@@ -13,6 +13,7 @@ import logging
 import datetime
 import sqlite3
 import time
+import pytz
 
 # Locations
 locations = [
@@ -325,7 +326,10 @@ def generate_image(final_locations: dict):
             tableContent += "</tr>"
         html = html.replace("TABLE_CONTENT", tableContent)
         html = html.replace(
-            "UPDATE_TIME", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "UPDATE_TIME",
+            datetime.datetime.now(pytz.timezone("Europe/London")).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
         )
         hti.screenshot(html_str=html, save_as="dashboard.png")
         with open("/tmp/dashboard.html", "w") as f:
