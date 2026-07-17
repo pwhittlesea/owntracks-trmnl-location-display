@@ -263,7 +263,7 @@ def calculate_locations():
 
         # calculate the time since report
         unix_timestamp = int(time.time())
-        time_since = unix_timestamp - reported
+        time_since = abs(unix_timestamp - reported)
 
         distances = []
         for location in locations:
