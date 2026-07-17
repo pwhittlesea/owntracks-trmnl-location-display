@@ -365,7 +365,9 @@ def generate_image(final_locations: dict):
 def generate_json(final_locations: dict):
     json_payload = {
         "statusCode": 200,
-        "updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "updated": datetime.datetime.now(pytz.timezone("Europe/London")).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
         "body": final_locations,
     }
     with open("/tmp/dashboard.json", "w") as f:
